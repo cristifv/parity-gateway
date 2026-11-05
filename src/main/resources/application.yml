@@ -1,0 +1,89 @@
+# parity-gateway (PLAN.md, revision 2026-10-27). v1 runs only the agents module.
+spring:
+  application:
+    name: parity-gateway
+  main:
+    banner-mode: off
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8090
+  shutdown: graceful
+
+management:
+  server:
+    port: 8091
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health, prometheus
+      path-mapping:
+        prometheus: metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+        add-additional-paths: true
+  metrics:
+    tags:
+      service: ${spring.application.name}
+      zone: ${parity.gateway.zone}
+      bin: ${parity.gateway.bin}
+      instance: ${parity.gateway.instance}
+
+parity:
+  gateway:
+    zone: ${ZONE:zone-1}
+    bin: ${PARITY_BIN:bin-a}
+    instance: ${HOSTNAME:gw-local}
+    version: '@project.version@'
+    lifecycle:
+      healthy-file: /tmp/${spring.application.name}.healthy
+      drained-file: /tmp/${spring.application.name}.drained
+      deregistration-delay: 2s
+      drain-timeout: 45s
+    readiness:
+      poll-interval: 250ms
+    modules:
+      agents:
+        enabled: true
+    agents:
+      path: /agents/v1/ws
+      host-header: x-forwarded-host
+      sip-domain: agents.example
+      auth-timeout: 5s
+      ping-interval: 15s
+      drain-spread: 10s
+      admission-per-second: 200
+      commands-per-second: 20
+      max-sessions-per-tenant: 5000
+      attach-concurrency: 64
+      outbox-limit: 256
+      re:
+        host: ${RE_HOST:127.0.0.1}
+        port: ${RE_PORT:9800}
+        test-peer: false
+      ie:
+        host: ${IE_HOST:127.0.0.1}
+        port: ${IE_PORT:9801}
+        test-peer: false
+      events:
+        enabled: ${EVENTS_ENABLED:true}
+        bootstrap-servers: ${KAFKA_BOOTSTRAP:127.0.0.1:9092}
+        topic: interaction.events
+      auth:
+        jwks-file: /run/secrets/parity_gateway_jwks.json
+        issuer: ${AUTH_ISSUER:https://id.eu1.platform.example/realms/eu1}
+      turn:
+        secret-file: /run/secrets/turn_secret
+        urls: []
+        ttl: 1h
+      sip:
+        key-file: /run/secrets/parity_gateway_sip_key
+        ws-servers: []
+        ttl: 5m

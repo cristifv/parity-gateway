@@ -1,0 +1,600 @@
+{
+  "schema_version": 1,
+  "service": "parity-gateway",
+  "description": "parity-gateway's log events (log-record.v1, parity-contracts CONVENTIONS \"Logging\"), from the 0.13.0 starter. Every call-scoped record carries the xsid (the interaction id) and tenant_id; records about a desktop carry agent_id and session_id. The common events (service.*, log.dropped, dependency.*) are logging/events.common.v1.json's.",
+  "events": {
+    "lifecycle.stale_file_removed": {
+      "description": "A healthy or drained file left by an earlier run was removed at the start (attrs.file).",
+      "levels": [
+        "info"
+      ],
+      "attrs": [
+        "file"
+      ]
+    },
+    "lifecycle.file_failed": {
+      "description": "The healthy or drained file couldn't be written or removed (attrs.file, error.kind); the healthy file is tried again (attrs.retry_ms).",
+      "levels": [
+        "error"
+      ],
+      "requires": [
+        "error"
+      ],
+      "attrs": [
+        "file"
+      ]
+    },
+    "readiness.gate_started": {
+      "description": "The application started; the readiness gate waits for its checks (attrs.checks) before writing the healthy file.",
+      "levels": [
+        "info"
+      ],
+      "attrs": [
+        "checks"
+      ]
+    },
+    "readiness.passed": {
+      "description": "Every readiness check passes again (service.not_ready names the failing ones).",
+      "levels": [
+        "info"
+      ]
+    },
+    "signal.received": {
+      "description": "SIGTERM or SIGINT (attrs.signal): the first drains (cause signal:<name>), a second exits at once (warn, attrs.exit_code).",
+      "levels": [
+        "info",
+        "warn"
+      ],
+      "attrs": [
+        "signal"
+      ]
+    },
+    "signal.handlers_missing": {
+      "description": "The signal handlers couldn't be installed: Spring's shutdown hook still drains, the exit codes differ.",
+      "levels": [
+        "warn"
+      ]
+    },
+    "drain.completed": {
+      "description": "Every drainable finished in time: the drained file is written (attrs.file, duration_ms).",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "duration_ms"
+      ],
+      "attrs": [
+        "file"
+      ]
+    },
+    "drain.timed_out": {
+      "description": "The drain didn't finish within the drain timeout (attrs.waiting_for): no drained file, exit 1.",
+      "levels": [
+        "error"
+      ],
+      "attrs": [
+        "waiting_for"
+      ]
+    },
+    "drain.failed": {
+      "description": "Closing the application failed during the drain: exit 1.",
+      "levels": [
+        "error"
+      ],
+      "requires": [
+        "error"
+      ]
+    },
+    "dev.sip_passwords_in_use": {
+      "description": "Profile dev: SIP passwords from a file (loopback only, GW-003); never in production.",
+      "levels": [
+        "warn"
+      ],
+      "attrs": [
+        "agents"
+      ]
+    },
+    "session.refused": {
+      "description": "A desktop login was refused before a session existed (attrs.reason: token_invalid, token_claims, token_role, tenant_mismatch, busy, tenant_cap, auth_timeout, auth_first, bad_frame; attrs.close_code). tenant_id is the host's when it is one.",
+      "levels": [
+        "warn"
+      ],
+      "attrs": [
+        "reason",
+        "close_code"
+      ],
+      "dedup": {
+        "window_ms": 10000,
+        "key": [
+          "attrs.reason"
+        ]
+      }
+    },
+    "session.opened": {
+      "description": "An agent desktop's session attached to routing-engine and got its snapshot (attrs.attach_generation, attrs.reservations).",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "tenant_id",
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "attach_generation"
+      ]
+    },
+    "session.attach_failed": {
+      "description": "routing-engine refused or missed an attach (error.code; attrs.again: a re-attach). A first attach closes the socket with 4013.",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "tenant_id",
+        "agent_id",
+        "session_id",
+        "error"
+      ]
+    },
+    "session.reattached": {
+      "description": "After a stream reconnect or a new RE leader the session re-attached; RE's snapshot is the truth again.",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "tenant_id",
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "attach_generation"
+      ]
+    },
+    "session.superseded": {
+      "description": "Another session of the same agent (another tab, or RE's Detached) took over; this one closes with 4009.",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "tenant_id",
+        "agent_id",
+        "session_id"
+      ]
+    },
+    "session.closing": {
+      "description": "The gateway closes the desktop's socket (attrs.close_code, attrs.reason: auth_failed, token_expired, ping_timeout, send_failed, superseded, drain, ...).",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "tenant_id",
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "close_code",
+        "reason"
+      ]
+    },
+    "session.closed": {
+      "description": "The desktop's socket closed (attrs.close_code); routing-engine was told to detach (attrs.detach_reason) unless another session took over.",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "tenant_id",
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "close_code"
+      ]
+    },
+    "session.close_failed": {
+      "description": "Closing a socket failed (it was already gone).",
+      "levels": [
+        "debug"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id"
+      ]
+    },
+    "session.detach_failed": {
+      "description": "routing-engine missed a detach (error.code); its grace timer ends the agent's session there.",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id",
+        "error"
+      ]
+    },
+    "session.token_renewed": {
+      "description": "The desktop sent a new token for the same tenant and agent.",
+      "levels": [
+        "debug"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id"
+      ]
+    },
+    "session.token_refused": {
+      "description": "The desktop's new token was refused (error.code): the socket closes with 4001.",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id",
+        "error"
+      ]
+    },
+    "session.socket_error": {
+      "description": "The desktop's socket failed (error.kind); the close follows.",
+      "levels": [
+        "debug"
+      ]
+    },
+    "session.task_failed": {
+      "description": "A session's task threw: the session goes on with the next one (error.stack).",
+      "levels": [
+        "error"
+      ],
+      "requires": [
+        "error"
+      ]
+    },
+    "sessions.draining": {
+      "description": "Draining: every desktop is told to reconnect within attrs.spread_ms (attrs.sessions).",
+      "levels": [
+        "info"
+      ],
+      "attrs": [
+        "sessions",
+        "spread_ms"
+      ]
+    },
+    "sessions.drained": {
+      "description": "The sessions are gone; attrs.closed_at_timeout were closed with 1001 near the timeout.",
+      "levels": [
+        "info"
+      ],
+      "attrs": [
+        "closed_at_timeout"
+      ]
+    },
+    "frame.refused": {
+      "description": "A desktop frame was refused (error.code: bad_request, unavailable before the attach, rate_limited; attrs.frame).",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "session_id",
+        "error"
+      ],
+      "dedup": {
+        "window_ms": 5000,
+        "key": [
+          "session_id"
+        ]
+      }
+    },
+    "frame.ignored": {
+      "description": "A desktop frame of an unknown type was ignored (attrs.reason).",
+      "levels": [
+        "debug"
+      ],
+      "requires": [
+        "session_id"
+      ]
+    },
+    "agent.command_executed": {
+      "description": "A desktop command not about a call this session shows (op: set_state, or an answer or wrap-up this session didn't show) was carried out (outcome ok).",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id",
+        "command_id",
+        "op",
+        "outcome"
+      ]
+    },
+    "agent.command_refused": {
+      "description": "A desktop command not about a call this session shows was refused (outcome refused; attrs.error_code: the contract code, attrs.answered: what the desktop was told).",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id",
+        "command_id",
+        "op",
+        "outcome"
+      ]
+    },
+    "offer.delivered": {
+      "description": "An offer frame went to the agent's desktop (attrs.offer_id; attrs.source: watch, attach, reattach). Pairs with routing-engine's offer.sent.",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "offer_id",
+        "source"
+      ]
+    },
+    "offer.revoked": {
+      "description": "The desktop was told an offer it shows is withdrawn (attrs.reason: expired, caller_gone, detached, ...).",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "offer_id",
+        "reason"
+      ]
+    },
+    "offer.revoke_unmatched": {
+      "description": "routing-engine withdrew an offer the desktop doesn't show (an older one); the frame is still sent.",
+      "levels": [
+        "debug"
+      ],
+      "requires": [
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "offer_id"
+      ]
+    },
+    "offer.answered": {
+      "description": "The desktop answered an offer (attrs.answer: accept, reject) and routing-engine took it; an accept gives reservation_id.",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "command_id",
+        "outcome"
+      ],
+      "attrs": [
+        "answer",
+        "offer_id"
+      ]
+    },
+    "reservation.received": {
+      "description": "A reservation (the agent's claim on a call) went to the desktop (attrs.origin; attrs.source: watch, attach, reattach).",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "reservation_id"
+      ],
+      "attrs": [
+        "source"
+      ]
+    },
+    "wrap_up.started": {
+      "description": "The desktop was told the agent's wrap-up began (attrs.ends_at_ms).",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "reservation_id"
+      ],
+      "attrs": [
+        "ends_at_ms"
+      ]
+    },
+    "wrap_up.ended": {
+      "description": "The agent ended the wrap-up (attrs.disposition_code) and routing-engine took it.",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "reservation_id",
+        "command_id"
+      ]
+    },
+    "call.state_changed": {
+      "description": "The desktop was shown a call in a new state (from_state none at the first sight; ringing, connected, held, ended, ...). attrs.source: event, command, attach.",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "source"
+      ],
+      "transition": true
+    },
+    "call.updated": {
+      "description": "The desktop was shown a call's new view in the same state (hold, mute, consult, recording, parties).",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id"
+      ],
+      "attrs": [
+        "source"
+      ]
+    },
+    "call.view_failed": {
+      "description": "interaction-engine didn't give a call's view (error.code); not_your_call and not_found end the call on the desktop.",
+      "levels": [
+        "warn"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "error"
+      ]
+    },
+    "call.command_executed": {
+      "description": "A call command from the desktop (op: hold, resume, mute, unmute, hangup, transfer, consult, merge, complete_transfer, cancel_consult, remove_party) was carried out by interaction-engine.",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "command_id",
+        "op",
+        "outcome"
+      ]
+    },
+    "call.command_refused": {
+      "description": "A command about a call the session shows was refused (outcome refused; attrs.error_code, attrs.answered).",
+      "levels": [
+        "info"
+      ],
+      "call_scoped": true,
+      "requires": [
+        "agent_id",
+        "session_id",
+        "command_id",
+        "op",
+        "outcome"
+      ]
+    },
+    "interaction_event.routed": {
+      "description": "An interaction.events record went to the sessions showing the call (event_id, owner_epoch, attrs.event_seq, attrs.event_type).",
+      "levels": [
+        "debug"
+      ],
+      "call_scoped": true,
+      "attrs": [
+        "event_seq"
+      ]
+    },
+    "interaction_event.dropped": {
+      "description": "An interaction.events record couldn't be routed (attrs.reason: missing_header, bad_body, header_body_mismatch).",
+      "levels": [
+        "warn"
+      ],
+      "attrs": [
+        "reason"
+      ],
+      "dedup": {
+        "window_ms": 10000,
+        "key": [
+          "attrs.reason"
+        ]
+      }
+    },
+    "interaction_events.stopped": {
+      "description": "The interaction.events consumer stopped on an error: desktops get call views only from their commands until a restart.",
+      "levels": [
+        "error"
+      ],
+      "requires": [
+        "error"
+      ]
+    },
+    "routing.stream_restored": {
+      "description": "The Watch stream to routing-engine is back (leader_epoch; attrs.new_leader): every session re-attaches.",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "bin",
+        "leader_epoch"
+      ]
+    },
+    "routing.leader_changed": {
+      "description": "A new routing-engine leader (leader_epoch) on a live stream: every session re-attaches.",
+      "levels": [
+        "info"
+      ],
+      "requires": [
+        "bin",
+        "leader_epoch"
+      ]
+    },
+    "routing.stream_lost": {
+      "description": "The Watch stream to routing-engine broke; reconnecting after attrs.retry_ms (backoff to 5 s). While it stays down: one record per 30 s, repeat_count for the rest.",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "bin"
+      ],
+      "attrs": [
+        "retry_ms"
+      ],
+      "dedup": {
+        "window_ms": 30000,
+        "key": [
+          "bin"
+        ]
+      }
+    },
+    "routing.stream_silent": {
+      "description": "No message on the Watch stream for 15 s: it is cancelled and reopened.",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "bin"
+      ]
+    },
+    "routing.acks_failed": {
+      "description": "A batch of acknowledgements didn't reach routing-engine (error.code, attrs.acks); it redelivers, sessions drop repeats.",
+      "levels": [
+        "warn"
+      ],
+      "requires": [
+        "bin",
+        "error"
+      ],
+      "dedup": {
+        "window_ms": 10000,
+        "key": [
+          "bin"
+        ]
+      }
+    },
+    "log.external": {
+      "description": "A record of a library the gateway uses (Spring, Tomcat, gRPC, Kafka): attrs.logger names it, its text is msg.",
+      "levels": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    }
+  }
+}

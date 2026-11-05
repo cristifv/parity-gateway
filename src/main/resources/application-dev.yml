@@ -1,0 +1,22 @@
+# Profile "dev" (with "fake" for the fakes): a developer's machine and the real-node test (PLAN step
+# 5). Static SIP passwords for a local freeswitch registrar (GW-003), refused unless the gateway and
+# every SIP WebSocket server are on loopback; the file lives outside the repository
+# (secrets/local-dev/, mode 600). Never in production.
+server:
+  address: 127.0.0.1
+management:
+  server:
+    address: 127.0.0.1
+parity:
+  gateway:
+    dev:
+      sip-passwords-file: ${DEV_SIP_PASSWORDS_FILE}
+    agents:
+      # Pages at http://<tenant>.localhost:8090/agent/ (the tenant is the host's first label);
+      # agent contacts sip:<agent>@<tenant>.agents.localhost (TC's agent-registrar-domain).
+      sip-domain: agents.localhost
+      # No proxy in local dev (GW-033): a browser's Host names the tenant; a client that sets
+      # x-forwarded-host (parity-deploy's routing e2e desktop) still works.
+      host-header: x-forwarded-host,host
+      sip:
+        ws-servers: [ws://127.0.0.1:5066]

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The CSP is a response header (AgentPageHeaders): connect-src names the SIP WebSocket servers. -->
+  <title>Agent</title>
+  <link rel="stylesheet" href="agent.css">
+</head>
+<body>
+  <!-- Minimal agent page (parity-gateway step 4): agent-ws.v1 plus the softphone rules. -->
+  <section id="login"><input id="token" type="password" placeholder="token (dev)"><button id="connect">Connect</button></section>
+  <section><b>State:</b> <span id="state">-</span> <span id="banner"></span>
+    <button data-state="ready">Ready</button><button data-state="not_ready">Not ready</button><button data-state="logged_out">Log out</button></section>
+  <section id="offer" hidden>Offer <span id="offer-info"></span><button id="accept">Accept</button><button id="reject">Reject</button></section>
+  <section id="ringing" hidden>Unmatched call ringing <button id="answer">Answer</button></section>
+  <section id="call" hidden>Call <span id="call-info"></span>
+    <button data-c="hold">Hold</button><button data-c="resume">Resume</button><button data-c="mute">Mute</button>
+    <button data-c="unmute">Unmute</button><button data-c="hangup">Hang up</button>
+    <input id="queue" placeholder="queue"><button id="transfer">Transfer</button></section>
+  <section id="keypad" hidden>Codes <input id="dtmf" type="password" autocomplete="off" placeholder="*1 pause, *2 resume, *3 mute"><button id="send-dtmf">Send</button></section>
+  <section id="wrap" hidden>Wrap-up <input id="disposition" placeholder="disposition"><button id="done">Done</button></section>
+  <audio id="remote" autoplay></audio>
+  <script type="module" src="agent.js"></script>
+</body>
+</html>

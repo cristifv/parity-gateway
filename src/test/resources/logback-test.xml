@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tests: the production pipeline (CountingAsyncAppender, LogRecordEncoder), into
+     target/test-logs/<parity.test.log>.ndjson, which scripts/ci.sh checks with contract-check
+     (log-record.v1, logging/events.parity-gateway.v1.json, the masking rules). Debug included,
+     so the debug events are checked too. -->
+<configuration>
+  <shutdownHook class="ch.qos.logback.core.hook.DefaultShutdownHook"/>
+  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <file>${parity.test.log.dir:-target/test-logs}/${parity.test.log:-tests}.ndjson</file>
+    <encoder class="parity.gateway.obs.LogRecordEncoder">
+      <service>parity-gateway</service>
+      <version>test</version>
+      <instance>test</instance>
+      <zone>zone-1</zone>
+      <bin>bin-a</bin>
+    </encoder>
+  </appender>
+  <!-- Also on stdout, directly (an AsyncAppender takes one appender): tests read it (Spring's
+       CapturedOutput), surefire keeps it per test class. -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="parity.gateway.obs.LogRecordEncoder">
+      <service>parity-gateway</service>
+      <version>test</version>
+      <instance>test</instance>
+    </encoder>
+  </appender>
+  <appender name="ASYNC" class="parity.gateway.obs.CountingAsyncAppender">
+    <queueSize>8192</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <neverBlock>true</neverBlock>
+    <maxFlushTime>2000</maxFlushTime>
+    <catalogue>logging/events.parity-gateway.v1.json</catalogue>
+    <appender-ref ref="FILE"/>
+  </appender>
+  <logger name="org.apache.kafka" level="WARN"/>
+  <logger name="parity" level="DEBUG"/>
+  <root level="INFO">
+    <appender-ref ref="ASYNC"/>
+    <appender-ref ref="CONSOLE"/>
+  </root>
+</configuration>

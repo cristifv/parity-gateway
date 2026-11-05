@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.2</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>parity</groupId>
+  <artifactId>parity-gateway</artifactId>
+  <version>0.1.0</version>
+  <name>parity-gateway</name>
+  <description>parity-gateway: the agents module (v1): the agent desktop's WebSocket, RE AgentService and IE InteractionControlService clients, fake RE and fake IE (PLAN.md, revision 2026-10-27)</description>
+
+  <properties>
+    <java.version>21</java.version>
+    <!-- parity-contracts (a plain sibling directory until git): the cross-language masking cases. -->
+    <parity.contracts.dir>${project.basedir}/../parity-contracts</parity.contracts.dir>
+    <!-- The newest release at least 14 days old on 2026-10-25 (2.7.1: 2026-01). -->
+    <license-maven-plugin.version>2.7.1</license-maven-plugin.version>
+    <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
+    <!-- Spring Boot 4.1.2 (BUGS J-001) manages Tomcat 11.0.27 and Jackson 3.1.7: no overrides. -->
+    <!-- grpc-java, protobuf and the ascopes protobuf plugin: the versions Spring Boot 4.1.2 manages. -->
+    <!-- nimbus-jose-jwt 10.10 (2026-09-17, Apache-2.0): JWT checks and the SIP token. -->
+    <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
+    <!-- OSV (2026-10-27): kafka-clients brings lz4-java 1.11.2 (GHSA-mcr4-qmvw-px4g HIGH and two
+         more); 1.11.4 (2026-09-25) is the fixed release at least 14 days old. -->
+    <lz4-java.version>1.11.4</lz4-java.version>
+    <!-- OSV (2026-10-27, GW-025): kafka-clients 4.2.2 brings snappy-java 1.1.10.7 (GHSA-gwq9-9ffj-mvrv
+         and GHSA-q233-g92q-qxp6 HIGH, GHSA-xqrx-qh46-34m7 MEDIUM); 1.1.10.9 (2026-10-03) is the fixed
+         release at least 14 days old. -->
+    <snappy-java.version>1.1.10.9</snappy-java.version>
+    <!-- OSV (GHSA-xxph-c9ww-hj94, BUGS TC-033/TC-037): grpc brings guava 33.6.0-android; 33.7.2-android
+         (published 2026-09-29, past the 14-day rule) is the fixed release. -->
+    <guava.version>33.7.2-android</guava.version>
+    <!-- Error Prone 2.50.0 (2026-06-10): the newest at least 14 days old (2.51.0 is 2026-10-22). -->
+    <errorprone.version>2.50.0</errorprone.version>
+    <parity-errorprone-checks.version>0.1.0</parity-errorprone-checks.version>
+    <errorprone.flags>-XepDisableWarningsInGeneratedCode -XepExcludedPaths:.*/generated-(test-)?sources/.* -Xep:FutureReturnValueIgnored:ERROR -Xep:GuardedBy:ERROR -Xep:UnusedVariable:ERROR -Xep:MissingCasesInEnumSwitch:ERROR</errorprone.flags>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>at.yawk.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>${lz4-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.xerial.snappy</groupId>
+        <artifactId>snappy-java</artifactId>
+        <version>${snappy-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-websocket</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- agents.v1, interaction.v1 and routing.v1 (the fake RE): grpc-java with the shaded Netty. -->
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-netty-shaded</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus-jose-jwt.version}</version>
+    </dependency>
+    <!-- interaction.events (read only); Spring Boot manages the version. -->
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+    </dependency>
+    <!-- JsonFormat: protobuf messages logged only as masked maps (TC ADR §4.7). -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java-util</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <!-- As spring-boot-starter-parent: application*.yml filtered (@project.version@), the rest as is. -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>**/application*.yml</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <excludes>
+          <exclude>**/application*.yml</exclude>
+        </excludes>
+      </resource>
+      <!-- The log event catalogue (log-record.v1): the appender's dedup reads it from the jar. -->
+      <resource>
+        <directory>${project.basedir}/logging</directory>
+        <targetPath>logging</targetPath>
+      </resource>
+    </resources>
+    <plugins>
+      <!-- Stubs from parity-contracts' protos: protoc and protoc-gen-grpc-java come from
+           Maven Central at the versions of the runtime libraries. -->
+      <plugin>
+        <groupId>io.github.ascopes</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+          <!-- Tests only: TC's telephony.v1 client for the step-5 stand-in for IE (RealNodeBrowserIT). -->
+          <execution>
+            <id>telephony-test-stubs</id>
+            <goals>
+              <goal>generate-test</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>parity/telephony/v1/*.proto</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <protoc>${protobuf-java.version}</protoc>
+          <sourceDirectories>
+            <sourceDirectory>${parity.contracts.dir}/proto</sourceDirectory>
+          </sourceDirectories>
+          <includes>
+            <include>parity/agents/v1/*.proto</include>
+            <include>parity/interaction/v1/*.proto</include>
+            <include>parity/routing/v1/*.proto</include>
+          </includes>
+          <embedSourcesInClassOutputs>false</embedSourcesInClassOutputs>
+          <plugins>
+            <plugin kind="binary-maven">
+              <groupId>io.grpc</groupId>
+              <artifactId>protoc-gen-grpc-java</artifactId>
+              <version>${grpc-java.version}</version>
+              <options>@generated=omit</options>
+            </plugin>
+          </plugins>
+        </configuration>
+      </plugin>
+      <!-- Static analysis (as parity-telephony-controller): javac's lint and Error Prone, with our own checks
+           (parity-telephony-controller/tools/errorprone-checks, installed by scripts/ci.sh first). Every warning fails the build.
+           .mvn/jvm.config opens javac's internals to Error Prone. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArgs>
+            <arg>-Xlint:all,-processing,-serial</arg>
+            <arg>-Werror</arg>
+            <arg>-XDcompilePolicy=simple</arg>
+            <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+            <arg>--should-stop=ifError=FLOW</arg>
+            <arg>-Xplugin:ErrorProne ${errorprone.flags}</arg>
+          </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.errorprone</groupId>
+              <artifactId>error_prone_core</artifactId>
+              <version>${errorprone.version}</version>
+            </path>
+            <path>
+              <groupId>parity</groupId>
+              <artifactId>parity-errorprone-checks</artifactId>
+              <version>${parity-errorprone-checks.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+        <executions>
+          <!-- Tests may use synchronized (no virtual-thread wait paths there), and their assertion
+               messages name their own synthetic data. -->
+          <execution>
+            <id>default-testCompile</id>
+            <configuration>
+              <compilerArgs>
+                <arg>-Xlint:all,-processing,-serial</arg>
+                <arg>-Werror</arg>
+                <arg>-XDcompilePolicy=simple</arg>
+            <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+                <arg>--should-stop=ifError=FLOW</arg>
+                <arg>-Xplugin:ErrorProne ${errorprone.flags} -Xep:NoSynchronized:OFF -Xep:NoDataInMessages:OFF -Xep:StringSplitter:OFF</arg>
+              </compilerArgs>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- R1-2: a virtual thread pinned while it waits prints a trace; each test's output goes
+               to a file that scripts/check-pins.sh fails the build on. -->
+          <argLine>-Djdk.tracePinnedThreads=short</argLine>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+          <systemPropertyVariables>
+            <parity.contracts.dir>${parity.contracts.dir}</parity.contracts.dir>
+            <!-- src/test/resources/logback-test.xml: the log-record.v1 lines scripts/ci.sh checks. -->
+            <parity.test.log.dir>${project.build.directory}/test-logs</parity.test.log.dir>
+            <parity.test.log>unit</parity.test.log>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <!-- Tests against the packaged jar and real containers (*IT): after `package`. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <argLine>-Djdk.tracePinnedThreads=short</argLine>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+          <systemPropertyVariables>
+            <gw.jar>${project.build.directory}/${project.build.finalName}.jar</gw.jar>
+            <parity.contracts.dir>${parity.contracts.dir}</parity.contracts.dir>
+            <parity.test.log.dir>${project.build.directory}/test-logs</parity.test.log.dir>
+            <parity.test.log>it</parity.test.log>
+          </systemPropertyVariables>
+          <environmentVariables>
+            <!-- Ryuk needs the docker socket inside a container, which SELinux refuses on this
+                 host; each test removes its own containers instead. -->
+            <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+          </environmentVariables>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[21,22)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.9,)</version>
+                </requireMavenVersion>
+                <banDuplicatePomDependencyVersions/>
+                <bannedDependencies>
+                  <excludes>
+                    <!-- Logging stays SLF4J + Logback through Spring Boot (Spring Framework 7's own
+                         commons-logging bridge is allowed). No Lombok here. -->
+                    <exclude>log4j:log4j</exclude>
+                    <exclude>org.apache.logging.log4j:log4j-core</exclude>
+                    <exclude>org.projectlombok:lombok</exclude>
+                  </excludes>
+                </bannedDependencies>
+                <requireReleaseDeps>
+                  <message>No snapshot dependencies.</message>
+                </requireReleaseDeps>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- The runtime SBOM (target/bom.json) that scripts/ci.sh scans with OSV-Scanner. -->
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <version>${cyclonedx-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>sbom</id>
+            <phase>package</phase>
+            <goals>
+              <goal>makeBom</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <outputFormat>json</outputFormat>
+          <outputName>bom</outputName>
+        </configuration>
+      </plugin>
+      <!-- The licence allow-list: every runtime and test dependency's licence, normalised by
+           licenseMerges, must be in includedLicenses, or `verify` fails. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>${license-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>licences</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>add-third-party</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <failOnMissing>true</failOnMissing>
+          <failOnBlacklist>true</failOnBlacklist>
+          <!-- An artifact whose licence name is unversioned or ambiguous ("BSD License", "GNU
+               Lesser General Public License") is resolved here, one artifact at a time, after
+               reading its licence: never by a merge. -->
+          <overrideUrl>file://${project.basedir}/src/license/override-THIRD-PARTY.properties</overrideUrl>
+          <includedLicenses>
+            <includedLicense>Apache-2.0</includedLicense>
+            <includedLicense>MIT</includedLicense>
+            <includedLicense>MIT-0</includedLicense>
+            <includedLicense>BSD-2-Clause</includedLicense>
+            <includedLicense>BSD-3-Clause</includedLicense>
+            <includedLicense>EPL-1.0</includedLicense>
+            <includedLicense>EPL-2.0</includedLicense>
+            <includedLicense>EDL-1.0</includedLicense>
+            <includedLicense>MPL-2.0</includedLicense>
+            <includedLicense>CC0-1.0</includedLicense>
+            <includedLicense>LGPL-2.1</includedLicense>
+            <includedLicense>CDDL-1.0</includedLicense>
+            <includedLicense>CDDL-1.1</includedLicense>
+            <includedLicense>CDDL-GPL-CE</includedLicense>
+            <includedLicense>GPL-2.0-CE</includedLicense>
+          </includedLicenses>
+          <!-- Only names that say which licence and which version they are. -->
+          <licenseMerges>
+            <licenseMerge>Apache-2.0|Apache License, Version 2.0|The Apache Software License, Version 2.0|Apache 2.0|Apache License 2.0|The Apache License, Version 2.0|Apache License Version 2.0|Apache Software License - Version 2.0|Apache License, version 2.0</licenseMerge>
+            <licenseMerge>MIT|The MIT License|MIT License|The MIT License (MIT)|MIT license</licenseMerge>
+            <licenseMerge>BSD-2-Clause|BSD 2-Clause License|The BSD 2-Clause License</licenseMerge>
+            <licenseMerge>BSD-3-Clause|BSD 3-Clause License|The BSD 3-Clause License|BSD-3-Clause License</licenseMerge>
+            <licenseMerge>EDL-1.0|Eclipse Distribution License - v 1.0|EDL 1.0|Eclipse Distribution License v. 1.0</licenseMerge>
+            <licenseMerge>EPL-1.0|Eclipse Public License 1.0|Eclipse Public License - v 1.0</licenseMerge>
+            <licenseMerge>EPL-2.0|Eclipse Public License 2.0|Eclipse Public License v2.0|Eclipse Public License - v 2.0|EPL 2.0|Eclipse Public License - Version 2.0</licenseMerge>
+            <licenseMerge>MPL-2.0|Mozilla Public License 2.0|Mozilla Public License Version 2.0</licenseMerge>
+            <licenseMerge>CC0-1.0|Public Domain, per Creative Commons CC0|CC0 1.0 Universal</licenseMerge>
+            <licenseMerge>LGPL-2.1|GNU Lesser General Public License, Version 2.1|LGPL 2.1|LGPL-2.1-only</licenseMerge>
+            <licenseMerge>CDDL-1.0|COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0</licenseMerge>
+            <licenseMerge>CDDL-1.1|CDDL 1.1</licenseMerge>
+            <licenseMerge>CDDL-GPL-CE|CDDL + GPLv2 with classpath exception|CDDL/GPLv2+CE</licenseMerge>
+            <licenseMerge>GPL-2.0-CE|GPL2 w/ CPE|GNU General Public License, version 2 with the GNU Classpath Exception</licenseMerge>
+          </licenseMerges>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

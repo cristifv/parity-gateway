@@ -1,0 +1,3 @@
+# OSV-Scanner exceptions for scripts/ci.sh's advisory step. Each one expires: on its date the
+# advisory fails CI again, so it is fixed or decided anew (never ignored open-ended).
+# None at present (GHSA-xxph-c9ww-hj94 fixed by pinning guava 33.7.2-android, BUGS TC-037).

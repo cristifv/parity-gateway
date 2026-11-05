@@ -1,0 +1,25 @@
+# Profile "fake": the fake RE (RoutingService + AgentService) and the fake IE in this process,
+# the gateway pointed at them, no Kafka. For IE step 5 and manual runs; dev keys from FAKE_KEYS_DIR.
+parity:
+  gateway:
+    fake:
+      re-port: 9802
+      ie-port: 9803
+    agents:
+      host-header: host
+      re:
+        port: 9802
+        test-peer: true
+      ie:
+        port: 9803
+        test-peer: true
+      events:
+        enabled: false
+      auth:
+        jwks-file: ${FAKE_KEYS_DIR:/tmp/parity-gateway-dev}/jwks.json
+        issuer: parity-gateway-dev
+      turn:
+        secret-file: ''
+        urls: [stun:127.0.0.1:3478]
+      sip:
+        key-file: ${FAKE_KEYS_DIR:/tmp/parity-gateway-dev}/sip.key

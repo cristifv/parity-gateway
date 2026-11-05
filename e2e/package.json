@@ -1,0 +1,9 @@
+{
+  "name": "parity-gateway-e2e",
+  "private": true,
+  "description": "Drives the agent page in headless Chromium for parity-gateway step 5 (Playwright, the image's version).",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.64.0"
+  }
+}
